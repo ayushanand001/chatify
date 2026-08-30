@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import User from "../models/user.model.js";
 import { generateToken } from "../lib/utils.js";
-import cloudinary from "../lib/cloudinary.js";
+import supabase from "../lib/supabase.js";
 
 export const signup = async (req, res) => {
     try {
@@ -79,24 +79,39 @@ export const logout = (req, res) => {
     }
 }
 
-export const updateProfile = async (req, res) => {
-    try {
-        const {profilePic} = req.body;
-        const userId = req.user._id;
+export const updateProfile = async (req, res) => { 
+    
+    try { 
+    
+        const { profilePic } = req.body; // base64 string from frontend 
+        const userId = req.user._id; 
+    
+        if (!profilePic) 
+        { 
+            return res.status(400).json({ message: "profile pic not provided" }); 
+        } 
+        
+        const base64Data = profilePic.replace(/^data:image\/\w+;base64,/, ''); 
+        const buffer = Buffer.from(base64Data, 'base64'); 
+        const fileName = `${userId}.png`; 
+        
+        const { error: uploadError } = await supabase.storage.from('profile-pics').upload(fileName, buffer, { 
+            contentType: 'image/png', upsert: true // overwrite if it already exists 
+        }); 
+        
+        if (uploadError) throw uploadError; 
+        
+        const { data: urlData } = supabase.storage.from('profile-pics').getPublicUrl(fileName); 
+        
+        const updatedUser = await User.findByIdAndUpdate( userId, { profilePic: `${urlData.publicUrl}?t=${Date.now()}` }, { new: true } ); 
+        res.status(200).json(updatedUser); 
+    
+    } catch (error) { 
+        console.log("FULL ERROR:", error); 
+        res.status(500).json({ message: "Internal server error" }); 
+    } 
+};
 
-        if(!profilePic) {
-            return res.status(400).json({message: "profile pic not provided"});
-        }
-       
-        const uploadResponse = await cloudinary.uploader.upload(profilePic);
-        const updatedUser = await User.findByIdAndUpdate(userId, {profilePic: uploadResponse.secure_url}, {new: true});
-        res.status(200).json(updatedUser);
-
-    } catch (error) {
-        console.log("Error in update profile: ", error);
-        res.status(500).json({message: "INternal server error"});
-    }
-}
 
 export const checkAuth = (req, res) => {
     try {
