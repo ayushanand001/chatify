@@ -1,6 +1,7 @@
 import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
 import supabase from "../lib/supabase.js";
+import {io, getSocketIdByUserId} from "../lib/socket.js";
 
 export const getUsersForSidebar = async (req, res) => {
     try {
@@ -47,6 +48,7 @@ export const sendMessage = async (req, res) => {
                 contentType: "image/png",
                 upsert: false
             })
+
             if (uploadError) throw uploadError; 
             const { data: urlData } = supabase.storage.from('message-media').getPublicUrl(fileName);
             imageUrl = urlData.publicUrl;
@@ -61,6 +63,9 @@ export const sendMessage = async (req, res) => {
         await message.save();
         
         //real time functionality todo
+        const receiverSocketId = getSocketIdByUserId(receiverId);
+        if(receiverSocketId) io.to(receiverSocketId).emit("newMessage", message);
+        
         res.status(201).json(message);
 
     } catch (err) {
