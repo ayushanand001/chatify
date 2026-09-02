@@ -24,13 +24,10 @@ export const signup = async (req, res) => {
 
         if(newUser) {
             generateToken(newUser._id, res);
-            await newUser.save();
-            res.status(201).json({ 
-                _id:newUser._id,
-                fullName: newUser.fullName,
-                email: newUser.email,
-                profilePic: newUser.profilePic,
-            });
+            const data = await newUser.save();
+            const user1 = data.toObject();
+            delete user1.password;
+            res.status(201).json(user1);
         } else {
             res.status(400).json({message: "Invalid user data"});
         }
@@ -54,12 +51,9 @@ export const login = async (req, res) => {
                 return res.status(400).json({message: "Invalid credentials"});
             } 
             generateToken(user._id, res);
-            res.status(200).json({ 
-                _id:user._id,
-                fullName: user.fullName,
-                email: user.email,
-                profilePic: user.profilePic,
-            });
+            const data = user.toObject();
+            delete data.password;
+            res.status(200).json(data);
         } else {
             return res.status(400).json({message: "Invalid credentials"});
         }
@@ -103,7 +97,7 @@ export const updateProfile = async (req, res) => {
         
         const { data: urlData } = supabase.storage.from('profile-pics').getPublicUrl(fileName); 
         
-        const updatedUser = await User.findByIdAndUpdate( userId, { profilePic: `${urlData.publicUrl}?t=${Date.now()}` }, { new: true } ); 
+        const updatedUser = await User.findByIdAndUpdate( userId, { profilePic: `${urlData.publicUrl}?t=${Date.now()}` }, { new: true } ).select("-password"); 
         res.status(200).json(updatedUser); 
     
     } catch (error) { 
