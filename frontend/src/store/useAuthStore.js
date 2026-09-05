@@ -16,56 +16,63 @@ export const useAuthStore = create((set, get) => ({
 
     checkAuth: async () => {
         try {
-            const res = await axiosInstance("/auth/check")
-            set({authUser: res.data}) 
-            get().connectSocket()
-
+            const res = await axiosInstance.get("/auth/check");
+            set({ authUser: res.data });
+            get().connectSocket();
         } catch (err) {
             console.log("Error in checkAuth: ", err);
-            set({authUser: null})
+            localStorage.removeItem("chatify_token");
+            set({ authUser: null });
         } finally {
-            set({isCheckingAuth: false})
+            set({ isCheckingAuth: false });
         }
     },
 
-
     signUp: async (formData) => {
-        set({isSigningUp: true})
+        set({ isSigningUp: true });
         try {
-            const res = await axiosInstance.post("/auth/signup", formData)
-            set({authUser: res.data});
-            toast.success("Account created successfully")
-            get().connectSocket()
+            const res = await axiosInstance.post("/auth/signup", formData);
+            if (res.data?.token) {
+                localStorage.setItem("chatify_token", res.data.token);
+            }
+            set({ authUser: res.data });
+            toast.success("Account created successfully");
+            get().connectSocket();
         } catch (error) {
-            toast.error(error.response.data.message)
+            toast.error(error.response?.data?.message || "Failed to sign up");
         } finally {
-            set({isSigningUp: false})
+            set({ isSigningUp: false });
         }
     },
     
     LogIn: async (formData) => {
-        set({isLoggingIn: true})
+        set({ isLoggingIn: true });
         try {
-            const res = await axiosInstance.post("/auth/login", formData)
-            set({authUser: res.data})
-            toast.success("User logged in successfully")
-            get().connectSocket()
-        } catch(error) {
-            console.log("Error in LogIn: ", error)
-            toast.error(error.response.data.message)
+            const res = await axiosInstance.post("/auth/login", formData);
+            if (res.data?.token) {
+                localStorage.setItem("chatify_token", res.data.token);
+            }
+            set({ authUser: res.data });
+            toast.success("User logged in successfully");
+            get().connectSocket();
+        } catch (error) {
+            console.log("Error in LogIn: ", error);
+            toast.error(error.response?.data?.message || "Failed to log in");
         } finally {
-            set({isLoggingIn: false})
+            set({ isLoggingIn: false });
         }
     },
 
     logOut: async () => {
         try {
-            await axiosInstance.post("/auth/logout")
-            set({authUser: null})
-            toast.success("Logout successfully")
-            get().disconnectSocket()
+            await axiosInstance.post("/auth/logout");
         } catch (error) {
-            toast.error(error.response.data.message)
+            console.log("Error in logOut: ", error);
+        } finally {
+            localStorage.removeItem("chatify_token");
+            set({ authUser: null });
+            toast.success("Logged out successfully");
+            get().disconnectSocket();
         }
     },
     

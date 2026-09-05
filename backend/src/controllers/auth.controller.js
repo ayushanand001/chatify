@@ -23,11 +23,11 @@ export const signup = async (req, res) => {
         });
 
         if(newUser) {
-            generateToken(newUser._id, res);
+            const token = generateToken(newUser._id, res);
             const data = await newUser.save();
             const user1 = data.toObject();
             delete user1.password;
-            res.status(201).json(user1);
+            res.status(201).json({ ...user1, token });
         } else {
             res.status(400).json({message: "Invalid user data"});
         }
@@ -50,10 +50,10 @@ export const login = async (req, res) => {
             if(!isPasswordCorrect) {
                 return res.status(400).json({message: "Invalid credentials"});
             } 
-            generateToken(user._id, res);
+            const token = generateToken(user._id, res);
             const data = user.toObject();
             delete data.password;
-            res.status(200).json(data);
+            res.status(200).json({ ...data, token });
         } else {
             return res.status(400).json({message: "Invalid credentials"});
         }
@@ -65,7 +65,13 @@ export const login = async (req, res) => {
 
 export const logout = (req, res) => {
     try {
-       res.cookie("jwt", "", {maxAge: 0});
+       const isProduction = process.env.NODE_ENV === "production" || process.env.NODE_ENV === "prod";
+       res.cookie("jwt", "", {
+           maxAge: 0,
+           httpOnly: true,
+           sameSite: isProduction ? "none" : "lax",
+           secure: isProduction
+       });
        res.status(200).json({message: "Logged out successfully"}); 
     } catch (error) {
         console.log("Error in logout controller", error.message);
