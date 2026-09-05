@@ -31,6 +31,7 @@ io.on("connection", (socket) => {
     const userId = socket.handshake.query?.userId;
     if (userId && userId !== "undefined") {
         userSocketMap[userId] = socket.id;
+        socket.join(String(userId));
         io.emit("onlineUsers", Object.keys(userSocketMap));
     }
 

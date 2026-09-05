@@ -41,15 +41,17 @@ function ChatContainer() {
       <ChatHeader />
 
       <div className="flex-1 overflow-auto p-4 space-y-4">
-        {messages.map((message) => (
+        {messages.map((message) => {
+          const isFromAuthUser = String(message.senderId) === String(authUser?._id);
+          return (
           <div
           key={message._id}
-          className={`chat ${message.senderId === authUser._id ? 'chat-end' : 'chat-start'}`} ref={messageEndRef}>
+          className={`chat ${isFromAuthUser ? 'chat-end' : 'chat-start'}`} ref={messageEndRef}>
             <div className="chat-image avatar">
               <div className="size-10 rounded-full border"> 
                 <img 
                   src = {
-                    message.senderId === authUser._id ?
+                    isFromAuthUser ?
                     authUser.profilePic || "/avatar.png" :
                     selectedUser.profilePic || "/avatar.png"
                   }
@@ -73,7 +75,8 @@ function ChatContainer() {
               {message.text && <p>{message.text}</p>}
             </div>            
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <MessageInput />
