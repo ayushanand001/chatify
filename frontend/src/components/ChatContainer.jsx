@@ -9,7 +9,7 @@ import { formatMessageTime } from '../lib/utils'
 
 function ChatContainer() {
   const {selectedUser, getMessages, messages, isMessagesLoading, subscribeToNewMessages, unsubscribeFromNewMessages} = useChatStore();
-  const {authUser} = useAuthStore();
+  const {authUser, socket} = useAuthStore();
   const messageEndRef = React.useRef(null);
 
   useEffect(() => {
@@ -24,7 +24,7 @@ function ChatContainer() {
 
     return () => unsubscribeFromNewMessages();
 
-  }, [getMessages, selectedUser, subscribeToNewMessages, unsubscribeFromNewMessages]);
+  }, [getMessages, selectedUser?._id, subscribeToNewMessages, unsubscribeFromNewMessages, socket]);
 
   if(isMessagesLoading) return (
     <div className="flex-1 flex flex-col overflow-auto">

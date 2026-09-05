@@ -4,42 +4,44 @@ import express from "express";
 
 const app = express();
 
-const server = new http.createServer(app);
-
-const allowedOrigins = [
-    process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(/\/+$/, "") : null,
-    "http://localhost:5173",
-    "http://localhost:3000"
-].filter(Boolean);
+const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin: allowedOrigins.length > 0 ? allowedOrigins : "*",
-        credentials: true
+        origin: (origin, callback) => {
+            // Allow all origins dynamically with credentials
+            callback(null, true);
+        },
+        credentials: true,
+        methods: ["GET", "POST"]
     }
 });
 
+// UserSocketMap[userId] = socketId
+const userSocketMap = {};
+
 export function getSocketIdByUserId(userId) {
-    return userSocketMap[userId]
+    if (!userId) return null;
+    return userSocketMap[userId] || userSocketMap[String(userId)];
 }
 
-// UserSocketMap[userId] = socketId
-const userSocketMap = {}
-
 io.on("connection", (socket) => {
-    console.log("a user connected", socket.id)
+    console.log("A user connected:", socket.id);
 
-    const userId = socket.handshake.query?.userId
-    if(userId) userSocketMap[userId] = socket.id
+    const userId = socket.handshake.query?.userId;
+    if (userId) {
+        userSocketMap[userId] = socket.id;
+    }
 
     io.emit("onlineUsers", Object.keys(userSocketMap));
 
     socket.on("disconnect", () => {
-        // Remove the user from the socket map when they disconnect
-        console.log("user disconnected", socket.id)
-        if(userId) delete userSocketMap[userId]
+        console.log("User disconnected:", socket.id);
+        if (userId) {
+            delete userSocketMap[userId];
+        }
         io.emit("onlineUsers", Object.keys(userSocketMap));
-    })
-})
+    });
+});
 
-export {io, server, app}
+export { io, server, app };

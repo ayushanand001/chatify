@@ -3,7 +3,15 @@ import { axiosInstance } from "../lib/axios"
 import toast from "react-hot-toast"
 import { io } from "socket.io-client"
 
-const BASE_URL = `${import.meta.env.VITE_API_URL}`
+const getBaseUrl = () => {
+    const rawUrl = import.meta.env.VITE_API_URL;
+    if (rawUrl) {
+        return rawUrl.replace(/\/+$/, "");
+    }
+    return import.meta.env.MODE === "development" ? "http://localhost:5001" : window.location.origin;
+};
+
+const BASE_URL = getBaseUrl();
 
 export const useAuthStore = create((set, get) => ({
     authUser: null,
@@ -84,32 +92,45 @@ export const useAuthStore = create((set, get) => ({
             toast.success("Profile pic uploaded successfully")
         } catch (error) {
             console.log(error)
-            toast.error(error.response.data.message)
+            toast.error(error.response?.data?.message || "Failed to update profile")
         } finally {
             set({isUpdatingProfile: false})
         }
     },
 
     connectSocket: () => {
-        const {authUser} = get()
+        const { authUser, socket } = get();
 
-        if (!authUser || get().socket?.connected) return;
+        if (!authUser) return;
+        if (socket?.connected) return;
 
-        const socket = io(BASE_URL, {
-            query: {userId: authUser._id},
+        if (socket) {
+            socket.disconnect();
+        }
+
+        const newSocket = io(BASE_URL, {
+            query: {
+                userId: authUser._id,
+            },
+            withCredentials: true,
+            transports: ["websocket", "polling"],
         });
         
-        socket.connect();
+        newSocket.connect();
         
-        set({socket});
+        set({ socket: newSocket });
 
-        socket.on("onlineUsers", (userIds) => {
-            set({onlineUsers: userIds})
-        })
+        newSocket.on("onlineUsers", (userIds) => {
+            set({ onlineUsers: userIds });
+        });
     },
 
     disconnectSocket: () => {
-        if(get().socket?.connected) get().socket.disconnect();
+        const { socket } = get();
+        if (socket?.connected) {
+            socket.disconnect();
+        }
+        set({ socket: null });
     }
 
-}))
+}));
