@@ -36,11 +36,19 @@ export const useChatStore = create((set, get) => ({
         }
     },
 
-    sendMessage: async(messageData) => {
-        const {selectedUser, messages} = get();
+    sendMessage: async (messageData) => {
+        const { selectedUser } = get();
+        if (!selectedUser) return;
         try {
             const res = await axiosInstance.post(`/message/send/${selectedUser._id}`, messageData);
-            set({messages: [...messages, res.data]});
+            const newMessage = res.data;
+            set((state) => {
+                const isAlreadyPresent = state.messages.some((m) => m._id === newMessage._id);
+                if (isAlreadyPresent) return state;
+                return {
+                    messages: [...state.messages, newMessage]
+                };
+            });
         } catch (error) {
             console.log(error);
             toast.error(error.response?.data?.message || "Failed to send message");
@@ -51,17 +59,22 @@ export const useChatStore = create((set, get) => ({
         const socket = useAuthStore.getState().socket;
         if (!socket) return;
 
+        // Clear existing listener to prevent duplicate listeners
         socket.off("newMessage");
 
-        socket.on("newMessage", (message) => {
+        socket.on("newMessage", (newMessage) => {
             const selectedUser = get().selectedUser;
             if (!selectedUser) return;
 
-            const isMessageSentFromSelectedUser = String(message.senderId) === String(selectedUser._id);
+            const isMessageSentFromSelectedUser = String(newMessage.senderId) === String(selectedUser._id);
             if (!isMessageSentFromSelectedUser) return;
 
-            set({
-                messages: [...get().messages, message]
+            set((state) => {
+                const isAlreadyPresent = state.messages.some((m) => m._id === newMessage._id);
+                if (isAlreadyPresent) return state;
+                return {
+                    messages: [...state.messages, newMessage]
+                };
             });
         });
     },
